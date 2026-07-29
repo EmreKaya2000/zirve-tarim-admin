@@ -15,9 +15,17 @@ import { fileURLToPath } from 'node:url';
  * (`canCancelSale`, `canEditSale`), `MAX_LIMIT`, `ERROR_CODES` ve 20+ etiket
  * haritası.
  *
- * Registry'den çekmek en temiz yol olurdu ama paket PRIVATE: o zaman her
- * geliştirici makinesi ve her CI işi `NODE_AUTH_TOKEN` ister. Kopya, token
- * kurulmadan çalışan bir sistem verir ve tek doğru kaynağı korur.
+ * REGISTRY KULLANILMIYOR — VE DENENDİ.
+ *
+ * Paket GitHub Packages'a yayınlanmaya çalışıldı, olmadı: o kayıt defteri
+ * paket kapsamının DEPO SAHİBİYLE aynı olmasını zorunlu tutar. Sahip
+ * `EmreKaya2000` olduğu için paketin `@emrekaya2000/types` olması gerekirdi;
+ * `@zirve/types` denemesi `403 permission_denied: The requested installation
+ * does not exist` verir. Yeniden adlandırma 135 dosyada import satırı
+ * değiştirmek demekti. Gerekçe ve alternatifler Api deposunun README'sinde.
+ *
+ * Kopya yönteminin kaybettirdiği tek şey sürüm etiketiydi; asıl amaç olan
+ * "sözleşme ayrışmasın" güvencesi CI kontrolüyle sağlanıyor.
  *
  * AYRIŞMA CI'DA YAKALANIR: `pnpm types:check` bu betiği çalıştırıp
  * `git diff --exit-code` ile fark arar. Elle düzenlenen bir kopya derlemeyi
@@ -27,8 +35,6 @@ import { fileURLToPath } from 'node:url';
  * listelerini `limit=200` ile çekiyordu, API'nin sınırı 100'dü; yedi liste 400
  * dönüyor ve ölçü birimi gelmediği için varyasyon oluşturulamıyordu.
  *
- * REGISTRY'YE GEÇİŞ: Api deposundaki README'de 4 adım. Import yolları
- * (`@zirve/types`) değişmediği için uygulama kodu etkilenmez.
  * =============================================================================
  *
  * Kaynak deponun yeri `ZIRVE_API_REPO` ile verilebilir; verilmezse bu deponun

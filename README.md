@@ -93,7 +93,13 @@ Panel bu paketten yalnız tip almıyor, **iş kuralı** da alıyor:
 menüsünü kurar, `canCancelSale` / `canEditSale` / `canAcceptPayment` satış
 düğmelerini açıp kapatır. Bu tablolar API'dekiyle ayrışırsa panel, API'nin
 reddedeceği bir işlemi kullanıcıya sunar — bu yüzden ayrışma CI'da
-`pnpm types:check` ile yakalanır.
+`pnpm types:check` ile yakalanır: kopya yeniden üretilir ve
+`git diff --exit-code` ile fark aranır.
+
+**Registry kullanılmıyor ve bu denendi.** GitHub Packages, paket kapsamının depo
+sahibiyle aynı olmasını zorunlu tutar; `@zirve/types` yayınlama denemesi
+`403 permission_denied: The requested installation does not exist` verdi.
+Gerekçe, alternatifler ve karar Api deposunun README'sinde.
 
 Sözleşmeyi değiştirmek gerekiyorsa **Api deposunda** değiştirin, sonra burada
 `pnpm sync:types` çalıştırın.
