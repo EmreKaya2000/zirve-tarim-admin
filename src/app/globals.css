@@ -1,0 +1,197 @@
+@import 'tailwindcss';
+@import '../ui/styles.css';
+
+/* Monorepo paketlerindeki sınıfların da taranması için (Tailwind v4). */
+@source "../ui/**/*.{ts,tsx}";
+
+/*
+ * Tasarım token'larını Tailwind yardımcı sınıflarına bağlar.
+ * Kaynak değerler src/ui/styles.css içindedir.
+ */
+@theme inline {
+  /* --- Yüzeyler --- */
+  --color-surface: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-surface-variant: var(--surface-variant);
+  --color-surface-tint: var(--surface-tint);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-background: var(--background);
+  --color-on-background: var(--on-background);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-on-surface: var(--inverse-on-surface);
+
+  /* --- Anahatlar --- */
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+
+  /* --- Birincil --- */
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-inverse-primary: var(--inverse-primary);
+  --color-primary-fixed: var(--primary-fixed);
+  --color-primary-fixed-dim: var(--primary-fixed-dim);
+  --color-on-primary-fixed: var(--on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--on-primary-fixed-variant);
+
+  /* --- İkincil --- */
+  --color-secondary: var(--secondary);
+  --color-on-secondary: var(--on-secondary);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary-container: var(--on-secondary-container);
+  --color-secondary-fixed: var(--secondary-fixed);
+  --color-secondary-fixed-dim: var(--secondary-fixed-dim);
+  --color-on-secondary-fixed: var(--on-secondary-fixed);
+  --color-on-secondary-fixed-variant: var(--on-secondary-fixed-variant);
+
+  /* --- Üçüncül --- */
+  --color-tertiary: var(--tertiary);
+  --color-on-tertiary: var(--on-tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-on-tertiary-container: var(--on-tertiary-container);
+
+  /* --- Hata --- */
+  --color-error: var(--error);
+  --color-on-error: var(--on-error);
+  --color-error-container: var(--error-container);
+  --color-on-error-container: var(--on-error-container);
+
+  /* --- Durum --- */
+  --color-success: var(--success);
+  --color-on-success: var(--on-success);
+  --color-success-container: var(--success-container);
+  --color-on-success-container: var(--on-success-container);
+  --color-warning: var(--warning);
+  --color-on-warning: var(--on-warning);
+  --color-warning-container: var(--warning-container);
+  --color-on-warning-container: var(--on-warning-container);
+  --color-info: var(--info);
+  --color-on-info: var(--on-info);
+  --color-info-container: var(--info-container);
+  --color-on-info-container: var(--on-info-container);
+
+  /* --- Tipografi: Manrope gövde, Courier Prime finansal rakamlar --- */
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-courier-prime), ui-monospace, monospace;
+
+  /* --- Köşe yuvarlaklığı --- */
+  --radius-sm: var(--radius-sm);
+  --radius-DEFAULT: var(--radius);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  /*
+   * --- Boşluk ölçeği ---
+   *
+   * İSİMLİ BOŞLUK ANAHTARI (--spacing-md, --spacing-3xl ...) TANIMLAMAYIN.
+   *
+   * Tailwind 4'te `max-w-3xl` gibi yardımcılar, `--container-3xl` yoksa
+   * boşluk ölçeğine düşer. Burada tanımlı olan `--spacing-3xl: 64px`
+   * yüzünden `max-w-3xl` 768px yerine 64PX üretiyordu; tüm metin
+   * sayfaları tek kelimelik bir sütuna sıkışmıştı. Hata sessizdi:
+   * derleme ve testler geçiyor, yalnız ekranda görünüyordu.
+   *
+   * Tailwind'in sayısal ölçeği zaten 4px tabanlıdır (p-1 = 4px,
+   * p-4 = 16px, p-16 = 64px); ayrı bir isimli ölçeğe gerek yok.
+   */
+
+  /* --- Konteyner --- */
+  --container-content: 1440px;
+
+  /* --- Gölgeler --- */
+  --shadow-elevated: var(--shadow-level-2);
+  --shadow-overlay: var(--shadow-level-3);
+}
+
+@layer base {
+  * {
+    border-color: var(--outline-variant);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--on-background);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /*
+   * Finansal rakamlar tabloda dikey hizalansın diye tabular-nums.
+   * DESIGN.md: "For financial figures ... ensure digits align vertically".
+   */
+  .font-financial {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Odak halkası: 2px dış parlama, tasarım dokümanındaki form kuralı. */
+  :focus-visible {
+    outline: 2px solid var(--primary-container);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Tasarım paketindeki tipografi ölçeği */
+  .text-h1 {
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 48px;
+    letter-spacing: -0.02em;
+  }
+
+  .text-h2 {
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 40px;
+    letter-spacing: -0.01em;
+  }
+
+  .text-h3 {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 32px;
+  }
+
+  .text-body-lg {
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 28px;
+  }
+
+  .text-label-md {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    letter-spacing: 0.01em;
+  }
+
+  .text-label-sm {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    letter-spacing: 0.02em;
+  }
+
+  @media (max-width: 767px) {
+    .text-h1 {
+      font-size: 32px;
+      line-height: 40px;
+      letter-spacing: -0.01em;
+    }
+
+    .text-h2 {
+      font-size: 26px;
+      line-height: 34px;
+    }
+  }
+}

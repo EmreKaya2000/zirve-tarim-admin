@@ -1,0 +1,112 @@
+/*
+ * ==========================================================================
+ * Zirve Tarım — Tasarım Sistemi
+ * "Agro-Financial Intelligence System"
+ * --------------------------------------------------------------------------
+ * Kaynak: Stitch tasarım paketi (DESIGN.md token seti).
+ *
+ * Renkler Material 3 rol adlandırmasını izler. HSL yerine doğrudan HEX
+ * kullanılır: tasarım paketindeki değerler HEX olarak verilmiştir ve
+ * dönüştürmek yuvarlama farkı üretir.
+ *
+ * Marka kimliği: tarım ile finansın kesişimi. Derin tarım yeşili otorite
+ * kurar, açık doğal yeşiller gruplama yapar, kırmızı yalnız finansal
+ * uyarılarda kullanılır.
+ * ==========================================================================
+ */
+
+@layer base {
+  :root {
+    /* --- Yüzeyler (tonal katmanlar) --- */
+    --surface: #f8faf6;
+    --surface-dim: #d8dbd6;
+    --surface-bright: #f8faf6;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f2f4f0;
+    --surface-container: #eceeea;
+    --surface-container-high: #e7e9e4;
+    --surface-container-highest: #e1e3df;
+    --surface-variant: #e1e3df;
+    --surface-tint: #2d694d;
+
+    --on-surface: #191c1a;
+    --on-surface-variant: #404943;
+
+    --background: #f8faf6;
+    --on-background: #191c1a;
+
+    --inverse-surface: #2e312f;
+    --inverse-on-surface: #eff1ed;
+
+    /* --- Anahatlar --- */
+    --outline: #707972;
+    --outline-variant: #bfc9c1;
+
+    /* --- Birincil: derin tarım yeşili --- */
+    --primary: #00452d;
+    --on-primary: #ffffff;
+    --primary-container: #1f5d42;
+    --on-primary-container: #95d4b1;
+    --inverse-primary: #95d4b2;
+    --primary-fixed: #b1f0cd;
+    --primary-fixed-dim: #95d4b2;
+    --on-primary-fixed: #002113;
+    --on-primary-fixed-variant: #0f5137;
+
+    /* --- İkincil: nötr yeşilimsi gri --- */
+    --secondary: #56615b;
+    --on-secondary: #ffffff;
+    --secondary-container: #dae5dd;
+    --on-secondary-container: #5c6761;
+    --secondary-fixed: #dae5dd;
+    --secondary-fixed-dim: #bec9c2;
+    --on-secondary-fixed: #141e19;
+    --on-secondary-fixed-variant: #3f4943;
+
+    /* --- Üçüncül: toprak kırmızısı (vurgu) --- */
+    --tertiary: #622a2c;
+    --on-tertiary: #ffffff;
+    --tertiary-container: #7e4042;
+    --on-tertiary-container: #ffb2b3;
+    --tertiary-fixed: #ffdad9;
+    --tertiary-fixed-dim: #ffb3b3;
+    --on-tertiary-fixed: #390a0f;
+    --on-tertiary-fixed-variant: #703537;
+
+    /* --- Hata / finansal uyarı --- */
+    --error: #ba1a1a;
+    --on-error: #ffffff;
+    --error-container: #ffdad6;
+    --on-error-container: #93000a;
+
+    /*
+     * --- Durum renkleri (tasarım paketinde yok, sistemle uyumlu türetildi) ---
+     * Talep/satış/tahsilat durum rozetleri için gerekli. Hepsi WCAG AA.
+     */
+    --success: #1f5d42;
+    --on-success: #ffffff;
+    --success-container: #d7f0e2;
+    --on-success-container: #0f5137;
+
+    --warning: #8a5a00;
+    --on-warning: #ffffff;
+    --warning-container: #ffeacc;
+    --on-warning-container: #5c3c00;
+
+    --info: #1b4d70;
+    --on-info: #ffffff;
+    --info-container: #d6e9f8;
+    --on-info-container: #123a56;
+
+    /* --- Köşe yuvarlaklığı --- */
+    --radius-sm: 0.25rem;
+    --radius: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+
+    /* --- Gölgeler: yumuşak, doğal ışık hissi --- */
+    --shadow-level-2: 0 4px 12px rgba(29, 41, 35, 0.08);
+    --shadow-level-3: 0 12px 32px rgba(29, 41, 35, 0.12);
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "extends": "./config/typescript/nextjs.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+
+      // @zirve/ui ve @zirve/types artik AYRI PAKET DEGIL, bu depoda kaynak
+      // olarak duruyor. Alias korunuyor ki 71 dosyadaki import satiri
+      // degismesin ve registry'ye gecis uygulama kodunu etkilemesin.
+      "@zirve/ui": ["./src/ui/index.ts"],
+      "@zirve/types": ["./src/types/index.ts"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", ".next"]
+}

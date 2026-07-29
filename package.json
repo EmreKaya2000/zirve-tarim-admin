@@ -1,0 +1,70 @@
+{
+  "name": "zirve-tarim-admin",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "ZirveTarım Admin — ürün, talep, satış, stok ve finans yönetim paneli",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "next dev --port ${ADMIN_PORT:-3001}",
+    "build": "next build && node scripts/sync-standalone.mjs",
+    "start": "next start --port ${ADMIN_PORT:-3001}",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"zirve-tarim-admin: birim test yok, tarayıcı testleri test:e2e\" && exit 0",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "sync:types": "node scripts/sync-types.mjs",
+    "types:check": "node scripts/sync-types.mjs && git diff --exit-code -- src/types",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,css}\"",
+    "clean": "rm -rf .next node_modules playwright-report test-results *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.5.7",
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-slot": "^1.1.1",
+    "@tanstack/react-query": "^5.64.1",
+    "@tanstack/react-query-devtools": "^5.64.1",
+    "axios": "^1.7.9",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.469.0",
+    "next": "^15.1.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.83.0",
+    "recharts": "^3.10.1",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^3.24.1",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@playwright/test": "^1.62.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.7",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.14.0",
+    "postcss": "^8.5.1",
+    "prettier": "^3.4.2",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "sharp": ">=0.35.3"
+    }
+  }
+}
