@@ -17,8 +17,10 @@ olması gerekir.
 
 ## Hızlı başlangıç
 
+### Geliştirme (önerilen — kod değişikliği anında yansır)
+
 ```bash
-# 1) API'yi kaldır (bu deponun YANINDA klonlu olmalı)
+# 1) Altyapıyı kaldır. Api deposu bu deponun YANINDA klonlu olmalı.
 git clone https://github.com/EmreKaya2000/zirve-tarim-api.git ../zirve-tarim-api
 cd ../zirve-tarim-api && cp .env.example .env && docker compose up -d
 docker compose exec api node prisma/seed.js
@@ -30,6 +32,17 @@ pnpm install
 pnpm sync:types      # sözleşmeyi Api deposundan kopyalar
 pnpm dev             # http://localhost:3001
 ```
+
+### Üç uygulamayı birlikte, konteyner olarak
+
+Üç depo yan yana klonluysa Api deposundan tek komut:
+
+```bash
+cd ../zirve-tarim-api && pnpm stack:up
+```
+
+Vitrin `:3000`, panel `:3001`, API `:4000` üzerinde ayağa kalkar. Ayrıntı Api
+deposunun README'sinde.
 
 Giriş: `admin@zirvetarim.local` / `ZirveTarim2026`
 
