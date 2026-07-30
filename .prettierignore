@@ -12,3 +12,6 @@ apps/api/prisma/seed.js
 docs/prisma/
 *.min.js
 *.min.css
+
+# CI Api deposunu buraya klonlar; bizim bicim kuralimiza tabi degil.
+.zirve-api/

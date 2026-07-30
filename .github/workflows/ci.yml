@@ -180,7 +180,12 @@ jobs:
       - name: API'yi başlat
         working-directory: .zirve-api
         run: |
-          pnpm --filter @zirve/api build
+          # `pnpm build` (turbo) YERINE `--filter @zirve/api` KULLANMAYIN.
+          # Filtre yalniz API paketini derler, workspace bagimliligi olan
+          # @zirve/types'i DERLEMEZ; `nest build` o zaman her dosyada
+          # "Cannot find module '@zirve/types'" der. Turbo bagimlilik
+          # grafigine uyup once types'i derler.
+          pnpm build
           node apps/api/dist/main.js &
           for i in $(seq 1 60); do
             curl -fsS http://127.0.0.1:4000/health >/dev/null 2>&1 && break
