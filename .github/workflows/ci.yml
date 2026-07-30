@@ -35,13 +35,21 @@ jobs:
           repository: EmreKaya2000/zirve-tarim-api
           path: .zirve-api
           # GITHUB_TOKEN DEĞİL: o jeton YALNIZ kendi deposunu görür ve
-          # zirve-tarim-api private olduğu için "Not Found" ile düşer. Depo
+          # zirve-tarim-api private olduğu için "Not Found" ile düşer — hata
+          # "yetkin yok" değil "yok" dediği için yanıltıcıdır. Depo
           # bölünmesinden beri CI bu adımda kırılıyordu.
-          # Gereken: zirve-tarim-api üzerinde Contents:Read yetkili bir
-          # fine-grained PAT, bu depoya ZIRVE_API_TOKEN adıyla eklenir.
-          # Bilerek yedeklenmiyor (`|| secrets.GITHUB_TOKEN` yok): eksik
-          # jeton sessizce eski kırık yola düşmek yerine açıkça patlamalı.
-          token: ${{ secrets.ZIRVE_API_TOKEN }}
+          #
+          # Kimlik: zirve-tarim-api deposuna eklenmiş SALT OKUNUR bir deploy
+          # key. Gizli yarısı bu depoda ZIRVE_API_SSH_KEY sırrında durur ve
+          # checkout HTTPS yerine SSH ile klonlar.
+          #
+          # PAT yerine deploy key: PAT'ın SÜRESİ DOLAR ve dolduğunda CI yine
+          # yukarıdaki "Not Found" ile kırmızıya döner. Deploy key'in süresi
+          # yoktur, kapsamı tek depodur ve yazma yetkisi yoktur.
+          #
+          # Bilerek yedeklenmiyor: eksik anahtar sessizce başka bir yola
+          # düşmek yerine açıkça patlamalı.
+          ssh-key: ${{ secrets.ZIRVE_API_SSH_KEY }}
 
       - name: pnpm kur
         uses: pnpm/action-setup@v4
@@ -140,13 +148,21 @@ jobs:
           repository: EmreKaya2000/zirve-tarim-api
           path: .zirve-api
           # GITHUB_TOKEN DEĞİL: o jeton YALNIZ kendi deposunu görür ve
-          # zirve-tarim-api private olduğu için "Not Found" ile düşer. Depo
+          # zirve-tarim-api private olduğu için "Not Found" ile düşer — hata
+          # "yetkin yok" değil "yok" dediği için yanıltıcıdır. Depo
           # bölünmesinden beri CI bu adımda kırılıyordu.
-          # Gereken: zirve-tarim-api üzerinde Contents:Read yetkili bir
-          # fine-grained PAT, bu depoya ZIRVE_API_TOKEN adıyla eklenir.
-          # Bilerek yedeklenmiyor (`|| secrets.GITHUB_TOKEN` yok): eksik
-          # jeton sessizce eski kırık yola düşmek yerine açıkça patlamalı.
-          token: ${{ secrets.ZIRVE_API_TOKEN }}
+          #
+          # Kimlik: zirve-tarim-api deposuna eklenmiş SALT OKUNUR bir deploy
+          # key. Gizli yarısı bu depoda ZIRVE_API_SSH_KEY sırrında durur ve
+          # checkout HTTPS yerine SSH ile klonlar.
+          #
+          # PAT yerine deploy key: PAT'ın SÜRESİ DOLAR ve dolduğunda CI yine
+          # yukarıdaki "Not Found" ile kırmızıya döner. Deploy key'in süresi
+          # yoktur, kapsamı tek depodur ve yazma yetkisi yoktur.
+          #
+          # Bilerek yedeklenmiyor: eksik anahtar sessizce başka bir yola
+          # düşmek yerine açıkça patlamalı.
+          ssh-key: ${{ secrets.ZIRVE_API_SSH_KEY }}
 
       - name: pnpm kur
         uses: pnpm/action-setup@v4
