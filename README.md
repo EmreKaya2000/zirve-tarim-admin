@@ -90,6 +90,25 @@ Testler **sıralı** koşar (`workers: 1`). Panel yazar: ürün, talep, satış 
 tahsilat kaydı üretir; paralel koşan iki test aynı SKU'yu veya aynı talebi
 hedefleyip birbirini bozar.
 
+## CI — `ZIRVE_API_TOKEN` sırrı gerekir
+
+CI, sözleşme kopyasını doğrulamak ve Playwright için gerçek API'yi kaldırmak
+üzere **zirve-tarim-api deposunu klonlar**. O depo private ve
+`secrets.GITHUB_TOKEN` yalnız kendi deposunu görür — bu yüzden adım
+`Not Found` ile düşer.
+
+Bir kez yapılacak (depo sahibi):
+
+1. GitHub → Settings → Developer settings → **Fine-grained personal access token**
+2. Repository access: yalnız `zirve-tarim-api` · Permissions: **Contents → Read-only**
+3. Jetonu bu depoya sır olarak ekleyin:
+
+```bash
+gh secret set ZIRVE_API_TOKEN --repo EmreKaya2000/zirve-tarim-admin
+```
+
+Jeton eksikse CI bilerek patlar; sessizce eski kırık yola düşmez.
+
 ## `@zirve/types` — sözleşme kopyası
 
 `src/types/` klasörü **kopyadır**, kaynağı `zirve-tarim-api`. Her dosyanın

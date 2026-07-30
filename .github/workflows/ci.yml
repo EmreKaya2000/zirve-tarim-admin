@@ -34,7 +34,14 @@ jobs:
         with:
           repository: EmreKaya2000/zirve-tarim-api
           path: .zirve-api
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN DEĞİL: o jeton YALNIZ kendi deposunu görür ve
+          # zirve-tarim-api private olduğu için "Not Found" ile düşer. Depo
+          # bölünmesinden beri CI bu adımda kırılıyordu.
+          # Gereken: zirve-tarim-api üzerinde Contents:Read yetkili bir
+          # fine-grained PAT, bu depoya ZIRVE_API_TOKEN adıyla eklenir.
+          # Bilerek yedeklenmiyor (`|| secrets.GITHUB_TOKEN` yok): eksik
+          # jeton sessizce eski kırık yola düşmek yerine açıkça patlamalı.
+          token: ${{ secrets.ZIRVE_API_TOKEN }}
 
       - name: pnpm kur
         uses: pnpm/action-setup@v4
@@ -132,7 +139,14 @@ jobs:
         with:
           repository: EmreKaya2000/zirve-tarim-api
           path: .zirve-api
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN DEĞİL: o jeton YALNIZ kendi deposunu görür ve
+          # zirve-tarim-api private olduğu için "Not Found" ile düşer. Depo
+          # bölünmesinden beri CI bu adımda kırılıyordu.
+          # Gereken: zirve-tarim-api üzerinde Contents:Read yetkili bir
+          # fine-grained PAT, bu depoya ZIRVE_API_TOKEN adıyla eklenir.
+          # Bilerek yedeklenmiyor (`|| secrets.GITHUB_TOKEN` yok): eksik
+          # jeton sessizce eski kırık yola düşmek yerine açıkça patlamalı.
+          token: ${{ secrets.ZIRVE_API_TOKEN }}
 
       - name: pnpm kur
         uses: pnpm/action-setup@v4
