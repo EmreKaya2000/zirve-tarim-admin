@@ -4,7 +4,19 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronDown, ChevronRight, FolderTree, Pencil, Plus, Power, Trash2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Folder,
+  FolderOpen,
+  FolderTree,
+  Pencil,
+  Plus,
+  Power,
+  Search,
+  Tag,
+  Trash2,
+} from 'lucide-react';
 import { z } from 'zod';
 import {
   Alert,
@@ -54,6 +66,7 @@ export function CategoriesPage() {
   const [deleting, setDeleting] = useState<CategoryTreeNode | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -199,7 +212,43 @@ export function CategoriesPage() {
     });
   }
 
-  const totalCount = countNodes(treeQuery.data ?? []);
+  /*
+   * `?? []` doğrudan yazılsaydı her render'da YENİ bir dizi üretirdi ve
+   * aşağıdaki `useMemo`ların bağımlılığı hep değişirdi — memo hiç tutmazdı.
+   */
+  const tree = useMemo(() => treeQuery.data ?? [], [treeQuery.data]);
+  const totalCount = countNodes(tree);
+
+  /*
+   * ARAMA — eşleşen düğüm ATALARIYLA birlikte gösterilir.
+   *
+   * Yalnız eşleşenleri göstermek ağacı bozar: "Üre" bulunur ama hangi
+   * dalın altında olduğu görünmez. Kategori yönetiminde konum, adın
+   * kendisi kadar önemlidir (bir kategori yanlış dala taşınmış olabilir).
+   */
+  const visibleTree = useMemo(() => filterTree(tree, search), [tree, search]);
+  const matchCount = useMemo(() => countNodes(visibleTree), [visibleTree]);
+
+  /** Ağaçtaki TÜM düğümlerin id'leri — toplu daraltma için. */
+  const allIds = useMemo(() => {
+    const ids: string[] = [];
+    const walk = (nodes: CategoryTreeNode[]): void => {
+      for (const node of nodes) {
+        if (node.children.length > 0) {
+          ids.push(node.id);
+          walk(node.children);
+        }
+      }
+    };
+    walk(tree);
+
+    return ids;
+  }, [tree]);
+
+  // Arama yapılırken her şey açık kalmalı: kapalı bir dalın altındaki
+  // eşleşme bulunmuş ama görünmez olurdu.
+  const effectiveCollapsed = search.trim() === '' ? collapsed : new Set<string>();
+  const isAllCollapsed = allIds.length > 0 && allIds.every((id) => collapsed.has(id));
 
   return (
     <div className="flex flex-col gap-8">
@@ -229,12 +278,59 @@ export function CategoriesPage() {
       ) : null}
 
       <Card>
-        <div className="flex items-center justify-between border-b border-outline-variant px-6 py-4">
+        {/*
+          ARAÇ ÇUBUĞU — 29 kategori ve 5 seviye elle taranamaz.
+          Arama ve toplu daraltma, ağaç büyüdükçe zorunlu hâle gelir.
+        */}
+        <div className="flex flex-col gap-3 border-b border-outline-variant px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center gap-2 text-on-surface-variant">
-            <FolderTree className="size-4" aria-hidden="true" />
+            <FolderTree className="size-4 shrink-0" aria-hidden="true" />
             <span className="text-label-md">Kategori Ağacı</span>
+            <span className="font-financial text-xs text-outline">
+              {search.trim() === ''
+                ? `${totalCount} kategori`
+                : `${matchCount}/${totalCount} kategori`}
+            </span>
           </div>
-          <span className="font-financial text-sm text-outline">{totalCount} kategori</span>
+
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-outline"
+                aria-hidden="true"
+              />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Kategori ara..."
+                aria-label="Kategori ara"
+                className="h-9 pl-9"
+              />
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCollapsed(isAllCollapsed ? new Set() : new Set(allIds))}
+              disabled={allIds.length === 0 || search.trim() !== ''}
+              title={
+                search.trim() !== ''
+                  ? 'Arama sırasında ağaç açık kalır'
+                  : isAllCollapsed
+                    ? 'Tümünü genişlet'
+                    : 'Tümünü daralt'
+              }
+              /*
+                aria-label ŞART: görünen metin `hidden sm:inline` ile mobilde
+                kayboluyor ve düğme yalnız ikondan ibaret kalıyor. Etiket
+                olmasa mobilde erişilebilir adı hiç olmazdı.
+              */
+              aria-label={isAllCollapsed ? 'Tümünü genişlet' : 'Tümünü daralt'}
+            >
+              {isAllCollapsed ? <ChevronDown /> : <ChevronRight />}
+              <span className="hidden sm:inline">{isAllCollapsed ? 'Genişlet' : 'Daralt'}</span>
+            </Button>
+          </div>
         </div>
 
         <div className="p-2">
@@ -244,7 +340,7 @@ export function CategoriesPage() {
                 <Skeleton key={index} className="h-10 w-full" />
               ))}
             </div>
-          ) : (treeQuery.data ?? []).length === 0 ? (
+          ) : tree.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-16 text-center">
               <FolderTree className="size-8 text-outline" aria-hidden="true" />
               <p className="text-label-md text-on-surface">Henüz kategori eklenmemiş</p>
@@ -252,14 +348,26 @@ export function CategoriesPage() {
                 Yeni kategori ekleyerek ürün taksonomisini oluşturmaya başlayın.
               </p>
             </div>
+          ) : visibleTree.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-16 text-center">
+              <Search className="size-8 text-outline" aria-hidden="true" />
+              <p className="text-label-md text-on-surface">Eşleşen kategori yok</p>
+              <p className="max-w-sm text-sm text-on-surface-variant">
+                “{search}” için sonuç bulunamadı. Arama kategori adı ve adresinde (slug) yapılır.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => setSearch('')}>
+                Aramayı temizle
+              </Button>
+            </div>
           ) : (
-            <ul className="flex flex-col">
-              {(treeQuery.data ?? []).map((node) => (
+            <ul className="flex flex-col gap-0.5">
+              {visibleTree.map((node) => (
                 <CategoryRow
                   key={node.id}
                   node={node}
                   parentId={null}
-                  collapsed={collapsed}
+                  collapsed={effectiveCollapsed}
+                  search={search}
                   onToggle={toggleCollapse}
                   onEdit={openEdit}
                   onAddChild={openCreate}
@@ -377,6 +485,7 @@ interface CategoryRowProps {
   node: CategoryTreeNode;
   parentId: string | null;
   collapsed: Set<string>;
+  search: string;
   onToggle: (id: string) => void;
   onEdit: (node: CategoryTreeNode, parentId: string | null) => void;
   onAddChild: (parentId: string) => void;
@@ -385,11 +494,37 @@ interface CategoryRowProps {
   statusPending: boolean;
 }
 
-/** Ağaçtaki tek bir satır ve alt ağacı. */
+/**
+ * Ağaçtaki tek bir satır ve alt ağacı.
+ *
+ * =============================================================================
+ * TASARIM KARARLARI
+ * =============================================================================
+ * 1. DERİNLİK RAY ile gösterilir, boşlukla değil. Önceki sürüm `padding-left`
+ *    kullanıyordu: beş seviyeli, 29 düğümlü bir ağaçta bir satırın hangi dala
+ *    ait olduğu okunamıyordu. Girinti artık iç içe `<ul>` üzerindeki sol
+ *    kenarlıktan geliyor — dallar gözle takip edilebilir hâle geldi.
+ *
+ * 2. İKON DURUMU ANLATIR: dolu dal açıkken `FolderOpen`, kapalıyken `Folder`,
+ *    yaprak `Tag`. Kullanıcı satırı okumadan yapıyı görebiliyor.
+ *
+ * 3. EYLEMLER GİZLENMİYOR. Önceki sürüm `opacity-0 group-hover:opacity-100`
+ *    kullanıyordu; bu, DOKUNMATİK CİHAZDA eylemleri tamamen erişilemez
+ *    kılıyordu (hover yok) ve panel mobil uyumlu olmak zorunda (SPEC §7).
+ *    Artık düğmeler her zaman görünür, yalnız düşük kontrastta duruyor ve
+ *    hover/odakta belirginleşiyor: keşfedilebilirlik var, gürültü yok.
+ *
+ * 4. SLUG İKİNCİ SATIRDA DEĞİL. Satır yüksekliğini iki katına çıkarıyor ve
+ *    nadiren gerekiyordu; artık adın yanında soluk bir ek olarak duruyor.
+ *
+ * 5. ARAMA EŞLEŞMESİ VURGULANIR — hangi kelimenin tuttuğu görünmezse
+ *    kullanıcı sonucu doğrulayamaz.
+ */
 function CategoryRow({
   node,
   parentId,
   collapsed,
+  search,
   onToggle,
   onEdit,
   onAddChild,
@@ -399,22 +534,29 @@ function CategoryRow({
 }: CategoryRowProps) {
   const hasChildren = node.children.length > 0;
   const isCollapsed = collapsed.has(node.id);
+  const isRoot = node.depth === 0;
 
   return (
     <li>
       <div
         className={cn(
-          'group flex items-center gap-2 rounded-[8px] px-2 py-2 transition-colors hover:bg-surface-container-low',
-          !node.isActive && 'opacity-55',
+          'group relative flex items-center gap-2 rounded-[8px] py-1.5 pl-1 pr-1.5 transition-colors',
+          'hover:bg-surface-container-low focus-within:bg-surface-container-low',
+          !node.isActive && 'opacity-60',
         )}
-        style={{ paddingLeft: `${node.depth * 24 + 8}px` }}
       >
         {hasChildren ? (
           <button
             type="button"
             onClick={() => onToggle(node.id)}
-            className="inline-flex size-6 shrink-0 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container"
-            aria-label={isCollapsed ? 'Genişlet' : 'Daralt'}
+            className="inline-flex size-6 shrink-0 items-center justify-center rounded-[6px] text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
+            /*
+              ETİKET KATEGORİ ADIYLA NİTELENİR. Yalnız "Daralt" deseydi ekran
+              okuyucu kullanıcısı 29 özdeş düğme duyardı ve hangisinin hangi
+              dala ait olduğunu ayırt edemezdi.
+            */
+            aria-label={`${node.name} kategorisini ${isCollapsed ? 'genişlet' : 'daralt'}`}
+            aria-expanded={!isCollapsed}
           >
             {isCollapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
           </button>
@@ -422,23 +564,74 @@ function CategoryRow({
           <span className="size-6 shrink-0" aria-hidden="true" />
         )}
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="truncate text-label-md text-on-surface">{node.name}</span>
-            {!node.isActive ? <Badge variant="neutral">Pasif</Badge> : null}
-            {hasChildren ? (
-              <span className="font-financial text-xs text-outline">
-                {node.children.length} alt
-              </span>
-            ) : null}
-          </div>
-          <span className="truncate font-financial text-xs text-outline">{node.slug}</span>
+        {/* İkon kutusu: kök kategoriler daha ağır, alt seviyeler daha sakin. */}
+        <span
+          className={cn(
+            'inline-flex size-7 shrink-0 items-center justify-center rounded-[6px]',
+            isRoot
+              ? 'bg-secondary-container text-on-primary-fixed-variant'
+              : 'bg-surface-container text-on-surface-variant',
+          )}
+          aria-hidden="true"
+        >
+          {hasChildren ? (
+            isCollapsed ? (
+              <Folder className="size-4" />
+            ) : (
+              <FolderOpen className="size-4" />
+            )
+          ) : (
+            <Tag className="size-3.5" />
+          )}
+        </span>
+
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {/*
+            Ad mobilde SARAR, masaüstünde tek satırda kırpılır.
+
+            Dar ekranda dört eylem düğmesi genişliğin yarısını alıyor ve
+            `truncate` adları "Katı ...", "Komp..." hâline getiriyordu —
+            listedeki en önemli bilgi okunamaz oluyordu.
+          */}
+          <span
+            className={cn(
+              'line-clamp-2 sm:truncate',
+              isRoot ? 'text-label-md text-on-surface' : 'text-sm text-on-surface',
+            )}
+          >
+            {highlight(node.name, search)}
+          </span>
+
+          <span className="hidden truncate font-financial text-xs text-outline sm:inline">
+            {highlight(node.slug, search)}
+          </span>
+
+          {hasChildren ? (
+            <span className="shrink-0 rounded-full bg-surface-container px-2 py-0.5 font-financial text-[11px] text-on-surface-variant">
+              {node.children.length}
+            </span>
+          ) : null}
+
+          {!node.isActive ? <Badge variant="neutral">Pasif</Badge> : null}
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        {/*
+          EYLEMLER — cihaza göre davranır.
+
+          `(hover: hover)` yalnız GERÇEK işaretleme cihazlarında (fare/trackpad)
+          eşleşir. Orada düğmeler gizlenip hover ile açılır: 29 satır × 4 ikon =
+          116 ikonluk bir duvar masaüstünde gereksiz gürültüydü.
+
+          Dokunmatikte hover diye bir şey YOKTUR, bu yüzden orada düğmeler her
+          zaman görünür kalır. Basit `group-hover` kullanılsaydı eylemler
+          telefonda tamamen erişilemez olurdu — panel mobil uyumlu olmak
+          zorunda (SPEC §7).
+        */}
+        <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity focus-within:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100">
           <Button
             variant="ghost"
             size="icon-sm"
+            className="size-8 sm:size-9"
             onClick={() => onAddChild(node.id)}
             title="Alt kategori ekle"
           >
@@ -448,6 +641,7 @@ function CategoryRow({
           <Button
             variant="ghost"
             size="icon-sm"
+            className="size-8 sm:size-9"
             onClick={() => onEdit(node, parentId)}
             title="Düzenle"
           >
@@ -457,6 +651,7 @@ function CategoryRow({
           <Button
             variant="ghost"
             size="icon-sm"
+            className="size-8 sm:size-9"
             onClick={() => onToggleStatus(node.id, !node.isActive)}
             disabled={statusPending}
             title={node.isActive ? 'Pasife al' : 'Aktifleştir'}
@@ -464,21 +659,33 @@ function CategoryRow({
             <Power />
             <span className="sr-only">{node.isActive ? 'Pasife al' : 'Aktifleştir'}</span>
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => onDelete(node)} title="Sil">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="size-8 sm:size-9"
+            onClick={() => onDelete(node)}
+            title="Sil"
+          >
             <Trash2 />
             <span className="sr-only">Sil</span>
           </Button>
         </div>
       </div>
 
+      {/*
+        ALT AĞAÇ — girinti ve RAY buradan gelir.
+        `ml-[15px]` chevron'un ortasına denk gelir, böylece ray düğmeden aşağı
+        iner ve dal görsel olarak ebeveynine bağlanır.
+      */}
       {hasChildren && !isCollapsed ? (
-        <ul className="flex flex-col">
+        <ul className="ml-[15px] flex flex-col gap-0.5 border-l border-outline-variant pl-3">
           {node.children.map((child) => (
             <CategoryRow
               key={child.id}
               node={child}
               parentId={node.id}
               collapsed={collapsed}
+              search={search}
               onToggle={onToggle}
               onEdit={onEdit}
               onAddChild={onAddChild}
@@ -491,6 +698,96 @@ function CategoryRow({
       ) : null}
     </li>
   );
+}
+
+/**
+ * Aramayı Türkçe karakterden bağımsız kılar: "sivi" yazan "Sıvı Gübre"yi bulur.
+ *
+ * NEDEN GEREKLİ: kullanıcı arama kutusuna diakritik yazmaz. Düz
+ * `toLocaleLowerCase('tr')` ile "sivi" ≠ "sıvı" olur ve ad hiç eşleşmez —
+ * ilk sürümde eşleşme yalnız slug üzerinden geliyordu, çünkü slug zaten
+ * normalleştirilmiş. Ada göre arama sessizce çalışmıyordu.
+ *
+ * Eşleme BİRE BİR karakterdir (NFD ayrıştırması DEĞİL): dizgenin uzunluğu
+ * korunur, böylece bulunan indeks orijinal metinde de geçerli olur ve
+ * vurgulama doğru yeri işaretler.
+ */
+const TR_FOLD: Record<string, string> = {
+  ı: 'i',
+  İ: 'i',
+  ş: 's',
+  Ş: 's',
+  ğ: 'g',
+  Ğ: 'g',
+  ü: 'u',
+  Ü: 'u',
+  ö: 'o',
+  Ö: 'o',
+  ç: 'c',
+  Ç: 'c',
+};
+
+function fold(value: string): string {
+  return value.replace(/[ıİşŞğĞüÜöÖçÇ]/g, (char) => TR_FOLD[char] ?? char).toLowerCase();
+}
+
+/**
+ * Arama terimini metin içinde vurgular.
+ *
+ * Eşleşmenin NEREDE tuttuğunu göstermek şart: "gubre" araması hem ada hem
+ * slug'a bakıyor, vurgu olmadan kullanıcı sonucun neden geldiğini anlayamaz.
+ */
+function highlight(text: string, search: string): React.ReactNode {
+  const term = search.trim();
+
+  if (term === '') {
+    return text;
+  }
+
+  const index = fold(text).indexOf(fold(term));
+
+  if (index === -1) {
+    return text;
+  }
+
+  return (
+    <>
+      {text.slice(0, index)}
+      <mark className="rounded-[3px] bg-secondary-container px-0.5 text-on-primary-fixed-variant">
+        {text.slice(index, index + term.length)}
+      </mark>
+      {text.slice(index + term.length)}
+    </>
+  );
+}
+
+/**
+ * Ağacı arama terimine göre süzer — eşleşen düğüm ATALARIYLA birlikte kalır.
+ *
+ * Yalnız eşleşenleri döndürmek ağacın anlamını bozar: kategori yönetiminde
+ * bir düğümün hangi dalın altında durduğu, adı kadar önemlidir.
+ */
+function filterTree(nodes: CategoryTreeNode[], search: string): CategoryTreeNode[] {
+  const term = fold(search.trim());
+
+  if (term === '') {
+    return nodes;
+  }
+
+  const result: CategoryTreeNode[] = [];
+
+  for (const node of nodes) {
+    const children = filterTree(node.children, search);
+    const selfMatches = fold(node.name).includes(term) || fold(node.slug).includes(term);
+
+    // Çocuğu eşleşen düğüm, kendisi eşleşmese de KALIR: yoksa eşleşme
+    // ağaçta yetim görünür.
+    if (selfMatches || children.length > 0) {
+      result.push({ ...node, children });
+    }
+  }
+
+  return result;
 }
 
 /**
