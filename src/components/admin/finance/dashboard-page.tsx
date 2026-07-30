@@ -100,7 +100,10 @@ export function DashboardPage() {
         <Alert variant="error" title="Vadesi geçmiş alacak var">
           {formatMoney(data.debt.overdueDebt)} tutarında, {data.debt.overdueSaleCount} satışta
           vadesi geçmiş alacak bulunuyor.{' '}
-          <Link href="/finans/vadesi-gecenler" className="underline">
+          <Link
+            href="/finans/vadesi-gecenler"
+            className="underline transition-colors hover:text-primary-container"
+          >
             Listeyi aç
           </Link>
         </Alert>
@@ -109,7 +112,10 @@ export function DashboardPage() {
       {data.criticalStockCount > 0 ? (
         <Alert variant="warning" title="Kritik stok">
           {data.criticalStockCount} varyasyon kritik eşiğin altında.{' '}
-          <Link href="/stok?lowStockOnly=1" className="underline">
+          <Link
+            href="/stok?lowStockOnly=1"
+            className="underline transition-colors hover:text-primary-container"
+          >
             Stok listesine git
           </Link>
         </Alert>
@@ -357,7 +363,10 @@ export function DashboardPage() {
           <CardHeader>
             <CardTitle className="text-body-lg font-semibold">En Çok Borcu Olanlar</CardTitle>
             <CardDescription>
-              <Link href="/finans/alacaklar" className="underline">
+              <Link
+                href="/finans/alacaklar"
+                className="underline transition-colors hover:text-primary-container"
+              >
                 Alacak yaşlandırmasını aç
               </Link>
             </CardDescription>

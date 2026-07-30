@@ -163,7 +163,7 @@ export function ConvertToSaleDialog({
             <button
               type="button"
               onClick={() => setCustomer(null)}
-              className="text-sm text-on-primary-fixed-variant underline"
+              className="text-sm text-on-primary-fixed-variant underline transition-colors hover:text-error"
             >
               Kaldır
             </button>

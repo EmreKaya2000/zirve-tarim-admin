@@ -41,7 +41,11 @@ export function AdminSidebar({ user, onLogout, open, onClose }: AdminSidebarProp
     <>
       {/* Marka */}
       <div className="flex items-center justify-between px-4 pb-8">
-        <Link href="/" className="flex items-center gap-3" onClick={onClose}>
+        <Link
+          href="/"
+          className="flex items-center gap-3 transition-opacity hover:opacity-80"
+          onClick={onClose}
+        >
           <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-primary text-on-primary">
             <Sprout className="size-5" aria-hidden="true" />
           </span>

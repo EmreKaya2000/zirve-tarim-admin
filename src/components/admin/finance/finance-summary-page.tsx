@@ -150,7 +150,10 @@ export function FinanceSummaryPage() {
           <CardHeader>
             <CardTitle className="text-body-lg font-semibold">Alacak Yaşlandırması</CardTitle>
             <CardDescription>
-              <Link href="/finans/alacaklar" className="underline">
+              <Link
+                href="/finans/alacaklar"
+                className="underline transition-colors hover:text-primary-container"
+              >
                 Müşteri kırılımını aç
               </Link>
             </CardDescription>

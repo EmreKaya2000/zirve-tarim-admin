@@ -114,8 +114,8 @@ export function BenefitsTab({ form, benefits, sideEffects }: BenefitsTabProps) {
                   className={cn(
                     'rounded-[8px] border p-3 transition-colors',
                     selected !== undefined
-                      ? 'border-primary-container bg-secondary-container/40'
-                      : 'border-outline-variant',
+                      ? 'border-primary-container bg-secondary-container/40 hover:bg-secondary-container/60'
+                      : 'border-outline-variant hover:border-outline hover:bg-surface-container-low',
                   )}
                 >
                   <button
@@ -177,8 +177,8 @@ export function BenefitsTab({ form, benefits, sideEffects }: BenefitsTabProps) {
                   className={cn(
                     'rounded-[8px] border p-3 transition-colors',
                     selected !== undefined
-                      ? 'border-primary-container bg-secondary-container/40'
-                      : 'border-outline-variant',
+                      ? 'border-primary-container bg-secondary-container/40 hover:bg-secondary-container/60'
+                      : 'border-outline-variant hover:border-outline hover:bg-surface-container-low',
                   )}
                 >
                   <button

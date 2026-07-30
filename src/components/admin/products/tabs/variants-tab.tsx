@@ -857,7 +857,7 @@ function VariantFormDialog({
               Stok buradan değiştirilemez. Değiştirmek için{' '}
               <Link
                 href={`/stok?search=${encodeURIComponent(editingSku)}`}
-                className="text-primary-container underline"
+                className="text-primary-container underline transition-colors hover:text-primary"
               >
                 stok düzeltme
               </Link>{' '}

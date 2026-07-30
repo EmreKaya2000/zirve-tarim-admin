@@ -138,6 +138,40 @@
     outline: 2px solid var(--primary-container);
     outline-offset: 2px;
   }
+
+  /*
+   * TIKLANABİLİR OLAN HER ŞEY EL İMLECİ GÖSTERİR.
+   *
+   * Tailwind v4, Preflight'tan `button { cursor: pointer }` kuralını kaldırıp
+   * tarayıcının yerel varsayılanına (`cursor: default`) döndü. Sonuç: bu
+   * projedeki HİÇBİR buton el imleci göstermiyordu — ne tasarım sistemindeki
+   * `Button` ne de ham `<button>`'lar. Kural burada, TEK yerde geri veriliyor;
+   * her bileşene `cursor-pointer` sınıfı serpiştirmek unutulmaya açıktır.
+   *
+   * Bunlar `base` katmanında olduğu için bir bileşen gerekirse `cursor-*`
+   * yardımcı sınıfıyla üzerine yazabilir (utilities katmanı base'i yener).
+   */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  a[href],
+  label[for],
+  summary,
+  select:not(:disabled),
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  input[type='range']:not(:disabled),
+  input[type='file']:not(:disabled)::file-selector-button {
+    cursor: pointer;
+  }
+
+  /* Devre dışı olan: "buraya basılmaz" sinyali. */
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  textarea:disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
+  }
 }
 
 @layer utilities {
