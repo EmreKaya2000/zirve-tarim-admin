@@ -534,6 +534,20 @@ function TotalsCard({ sale }: { sale: SaleDetail }) {
         <Row label="Ara toplam" value={formatMoney(sale.subtotal)} />
         <Row label="İndirim" value={`- ${formatMoney(sale.discountTotal)}`} />
 
+        {/*
+          KDV DAHİLDİR — genel toplama EKLENMEZ.
+
+          Fiyatlar KDV dahil girildiği için vergi zaten ara toplamın içinde.
+          "+ KDV" gibi gösterilse kullanıcı toplamın artacağını sanardı.
+          Satır bu yüzden "içindeki KDV" diyor ve toplamın ÜSTÜNDE duruyor.
+
+          KDV oranı girilmemiş satışlarda değer sıfırdır; satır hiç
+          gösterilmez — boş bir "0,00 ₺ KDV" satırı gürültüdür.
+        */}
+        {Number(sale.taxTotal) > 0 ? (
+          <Row label="İçindeki KDV" value={formatMoney(sale.taxTotal)} />
+        ) : null}
+
         <div className="flex items-baseline justify-between border-t border-outline-variant pt-2">
           <span className="text-label-md text-on-surface">Genel toplam</span>
           <span className="font-financial text-h3 text-on-surface">
