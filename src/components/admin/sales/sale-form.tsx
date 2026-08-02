@@ -37,6 +37,7 @@ import {
 import { ApiError } from '@/lib/api-error';
 import { formatMoney, formatQuantity } from '@/lib/format';
 import { productsApi, type Product } from '@/lib/products-api';
+import { isLowStock, isOutOfStock } from '@/lib/stock-api';
 import { customersApi, salesApi, type CustomerListItem } from '@/lib/sales-api';
 
 /**
@@ -648,27 +649,89 @@ function ItemsCard({
                     <div className="mt-1 flex flex-wrap gap-1.5">
                       {product.variants
                         .filter((variant) => variant.isActive)
-                        .map((variant, index) => (
-                          <button
-                            key={variant.id}
-                            type="button"
-                            onClick={() => addVariant(product, product.variants.indexOf(variant))}
-                            disabled={rows.some((row) => row.variantId === variant.id)}
-                            className={cn(
-                              'rounded-full border border-outline-variant px-2.5 py-1 text-xs transition-colors',
-                              'hover:border-primary-container hover:text-primary-container',
-                              'disabled:opacity-40',
-                            )}
-                          >
-                            <Plus className="mr-1 inline size-3" aria-hidden="true" />
-                            {variant.name ??
-                              `${formatQuantity(variant.unitQuantity)} ${variant.unitType.code}`}
-                            {variant.salePrice !== undefined
-                              ? ` · ${formatMoney(variant.salePrice)}`
-                              : ''}
-                            {index < 0 ? '' : ''}
-                          </button>
-                        ))}
+                        .map((variant) => {
+                          /*
+                           * STOK DURUMU ÇİPTE GÖSTERİLİR.
+                           *
+                           * Önceden personel yetersiz stoğu ancak satışı
+                           * ONAYLARKEN, yani müşterinin karşısında
+                           * INSUFFICIENT_STOCK hatasıyla öğreniyordu. Veri
+                           * zaten bu yanıtta geliyor; eksik olan tek şey
+                           * ekrana basmaktı.
+                           *
+                           * `trackStock` eski bir API sürümünden gelmiyorsa
+                           * `true` varsayılır: stok takibi açıkmış gibi
+                           * davranmak, kapalıymış gibi davranmaktan güvenli
+                           * — ikincisi tükenmiş stoğu "yeterli" gösterirdi.
+                           */
+                          const stockView = {
+                            ...variant,
+                            trackStock: variant.trackStock ?? true,
+                          };
+
+                          const zatenEkli = rows.some((row) => row.variantId === variant.id);
+                          const takipsiz = !stockView.trackStock;
+                          const tukendi = isOutOfStock(stockView);
+                          const kritik = !tukendi && isLowStock(stockView);
+
+                          const stokMetni = takipsiz
+                            ? 'Takip yok'
+                            : `${formatQuantity(variant.stockQuantity)} ${variant.unitType.code}`;
+
+                          const stokSinifi = takipsiz
+                            ? 'text-on-surface-variant'
+                            : tukendi
+                              ? 'text-error'
+                              : kritik
+                                ? 'text-warning'
+                                : 'text-on-surface-variant';
+
+                          const baslik = zatenEkli
+                            ? 'Bu varyasyon listede'
+                            : takipsiz
+                              ? 'Bu varyasyonda stok takibi kapalı'
+                              : tukendi
+                                ? 'Stokta yok — satış onaylanırken reddedilir'
+                                : kritik
+                                  ? 'Kritik stok seviyesinin altında'
+                                  : 'Stok yeterli';
+
+                          return (
+                            <button
+                              key={variant.id}
+                              type="button"
+                              /*
+                               * `indexOf` BİLİNÇLİ: liste `.filter(isActive)`
+                               * ile süzüldüğü için map index'i orijinal
+                               * dizideki konumla örtüşmez.
+                               */
+                              onClick={() => addVariant(product, product.variants.indexOf(variant))}
+                              /*
+                               * STOK DURUMU `disabled`A KARIŞMAZ. Stoğu biten
+                               * ürün için satış girmek meşru bir iş akışıdır
+                               * (taslak olarak hazırlanır, mal gelince
+                               * onaylanır). Uyarı gösterilir, yol kapatılmaz.
+                               */
+                              disabled={zatenEkli}
+                              title={baslik}
+                              className={cn(
+                                'rounded-full border border-outline-variant px-2.5 py-1 text-xs transition-colors',
+                                'hover:border-primary-container hover:text-primary-container',
+                                'disabled:opacity-40',
+                                tukendi && 'border-error/40',
+                              )}
+                            >
+                              <Plus className="mr-1 inline size-3" aria-hidden="true" />
+                              {variant.name ??
+                                `${formatQuantity(variant.unitQuantity)} ${variant.unitType.code}`}
+                              {variant.salePrice !== undefined
+                                ? ` · ${formatMoney(variant.salePrice)}`
+                                : ''}
+                              {' · '}
+                              <span className={cn('font-financial', stokSinifi)}>{stokMetni}</span>
+                            </button>
+                          );
+                        })}
                     </div>
                   </div>
                 ))

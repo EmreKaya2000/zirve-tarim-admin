@@ -21,6 +21,16 @@ export interface ProductVariant {
   maxOrderQuantity: string | null;
   stockQuantity: string;
   lowStockThreshold: string;
+  /**
+   * Stok takibi açık mı?
+   *
+   * BU ALAN BİR SÜRE LİSTE UCUNDA DÖNMÜYORDU ve tip bunu zorunlu ilan
+   * ettiği için derleyici sessiz kaldı: `isOutOfStock(variant)` çalışma
+   * zamanında `undefined && ...` ile falsy'ye düşüp stoğu SIFIR olan her
+   * varyasyonu "yeterli" gösteriyordu. API tarafında düzeltildi
+   * (`ADMIN_PRODUCT_LIST_SELECT`); yeni alan ekleyen herkes iki seçicinin
+   * de güncellendiğini doğrulamalı.
+   */
   trackStock: boolean;
   isDefault: boolean;
   isActive: boolean;
