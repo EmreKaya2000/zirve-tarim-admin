@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Search, Trash2, UserPlus } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, UserPlus, Store } from 'lucide-react';
 import {
   Alert,
   Badge,
@@ -29,6 +29,7 @@ import {
   PAYMENT_METHOD_LABELS,
   PAYMENT_TYPES,
   PAYMENT_TYPE_LABELS,
+  isRetailCustomer,
   requiresPaymentDueDate,
   type PaymentMethod,
   type PaymentType,
@@ -69,7 +70,42 @@ export function SaleForm() {
   const [initialAmount, setInitialAmount] = useState('');
   const [initialDueDate, setInitialDueDate] = useState('');
 
+  /**
+   * PERAKENDE (KARTSIZ) SATIŞ.
+   *
+   * Karttan türetilir, ayrı bir state DEĞİL: kart arama yoluyla da
+   * seçilebildiği için ("perakende" yazıp bulmak mümkün) kuralın düğmeye
+   * değil SEÇİLEN KARTA bağlı olması gerekir.
+   */
+  const isRetail = customer !== null && isRetailCustomer(customer.code);
+
   const totals = useMemo(() => previewTotals(rows), [rows]);
+
+  /*
+   * Perakende seçilince ödeme tipi peşine sabitlenir ve tahsilat açılır.
+   * Backend ikisini de zorunlu tutuyor (vadeli 400, ödemesiz 400); burada
+   * yapılan yalnız kullanıcıyı reddedilecek bir forma sokmamak.
+   */
+  useEffect(() => {
+    if (!isRetail) {
+      return;
+    }
+
+    setPaymentType('CASH');
+    setDueDate('');
+    setInitialPaymentEnabled(true);
+  }, [isRetail]);
+
+  /*
+   * Tahsilat tutarı satış toplamını KARŞILAMALI (backend kuruş kuruş
+   * karşılaştırır). Perakendede tutarı kullanıcıya bıraktırmak yerine
+   * toplamla senkron tutuyoruz.
+   */
+  useEffect(() => {
+    if (isRetail) {
+      setInitialAmount(totals.grandTotal.toFixed(2));
+    }
+  }, [isRetail, totals.grandTotal]);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -171,22 +207,30 @@ export function SaleForm() {
                 />
               </FormField>
 
-              <FormField>
-                <Label htmlFor="paymentType" required>
-                  Ödeme Tipi
-                </Label>
-                <Select
-                  id="paymentType"
-                  value={paymentType}
-                  onChange={(event) => setPaymentType(event.target.value as PaymentType)}
-                >
-                  {PAYMENT_TYPES.map((value) => (
-                    <option key={value} value={value}>
-                      {PAYMENT_TYPE_LABELS[value]}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
+              {isRetail ? (
+                <FormField>
+                  <Label htmlFor="paymentType">Ödeme Tipi</Label>
+                  <Input id="paymentType" value="Peşin" readOnly disabled />
+                  <FieldHint>Kartsız satış daima peşindir; borcun sahibi yoktur.</FieldHint>
+                </FormField>
+              ) : (
+                <FormField>
+                  <Label htmlFor="paymentType" required>
+                    Ödeme Tipi
+                  </Label>
+                  <Select
+                    id="paymentType"
+                    value={paymentType}
+                    onChange={(event) => setPaymentType(event.target.value as PaymentType)}
+                  >
+                    {PAYMENT_TYPES.map((value) => (
+                      <option key={value} value={value}>
+                        {PAYMENT_TYPE_LABELS[value]}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+              )}
 
               {paymentType === 'CREDIT' ? (
                 <FormField>
@@ -328,6 +372,18 @@ function CustomerPicker({
   selected: CustomerListItem | null;
   onSelect: (customer: CustomerListItem) => void;
 }) {
+  /*
+   * Perakende kartı tek ve sabittir; uzun süre önbellekte tutulabilir.
+   * `retry: false` — 404 (seed yok) geçici bir hata değildir, tekrar
+   * denemek anlamsız.
+   */
+  const retailQuery = useQuery({
+    queryKey: ['customer', 'retail'],
+    queryFn: customersApi.retail,
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
+
   const [search, setSearch] = useState('');
   const [isCreateOpen, setCreateOpen] = useState(false);
 
@@ -346,10 +402,29 @@ function CustomerPicker({
           <CardDescription>Mevcut müşteriyi arayın veya yeni kayıt oluşturun.</CardDescription>
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-          <UserPlus />
-          Yeni Müşteri
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          {/*
+            PERAKENDE DÜĞMESİ, SORGU BAŞARILIYSA GÖRÜNÜR.
+            Seed çalıştırılmamış bir kurulumda uç 404 döner; düğmeyi
+            göstermek kullanıcıyı çalışmayan bir yola sokardı.
+          */}
+          {retailQuery.data !== undefined ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onSelect(retailQuery.data)}
+              title="Müşteri kartı açmadan peşin satış. Tahsilat satışla birlikte alınır."
+            >
+              <Store />
+              Perakende Satış
+            </Button>
+          ) : null}
+
+          <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+            <UserPlus />
+            Yeni Müşteri
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-3">

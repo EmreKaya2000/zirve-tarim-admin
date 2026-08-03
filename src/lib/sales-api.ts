@@ -128,6 +128,14 @@ export const customersApi = {
   remove: (id: string): Promise<void> => apiDelete<void>(`/admin/customers/${id}`),
 
   /**
+   * Kartsız (perakende) satışların bağlandığı sistem kartı.
+   *
+   * Seed çalıştırılmamış bir kurulumda 404 döner; çağıran taraf o durumda
+   * düğmeyi gizlemeli, hata ekranı göstermemeli.
+   */
+  retail: (): Promise<CustomerListItem> => apiGet<CustomerListItem>('/admin/customers/retail'),
+
+  /**
    * Mükerrer telefon ÖN KONTROLÜ.
    *
    * Kaydı engellemez; formun kullanıcıyı kaydetmeden uyarabilmesi içindir.
