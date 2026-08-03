@@ -16,7 +16,8 @@ export interface LookupRecord {
 
 export interface Category extends LookupRecord {
   parentId: string | null;
-  icon: string | null;
+  /** Yüklenen ikon görselinin adresi; yükleme ucu üzerinden ayarlanır. */
+  iconUrl: string | null;
   imageUrl: string | null;
   metaTitle: string | null;
   metaDesc: string | null;
@@ -29,7 +30,7 @@ export interface CategoryTreeNode {
   name: string;
   slug: string;
   description: string | null;
-  icon: string | null;
+  iconUrl: string | null;
   imageUrl: string | null;
   sortOrder: number;
   isActive: boolean;
@@ -154,6 +155,25 @@ export const categoriesApi = {
 
   breadcrumb: (id: string): Promise<{ id: string; name: string; slug: string }[]> =>
     apiGet(`/admin/categories/${id}/breadcrumb`),
+
+  /**
+   * İkon görseli yükler. Backend 128×128 WebP'e dönüştürür.
+   *
+   * `Content-Type` BİLEREK undefined: axios'un FormData için boundary'li
+   * başlığı kendisi üretmesi gerekir. Elle 'multipart/form-data' yazmak
+   * boundary'yi düşürür ve sunucu gövdeyi ayrıştıramaz.
+   */
+  uploadIcon: async (id: string, file: File): Promise<{ iconUrl: string }> => {
+    const form = new FormData();
+
+    form.append('file', file);
+
+    return apiPost<{ iconUrl: string }, FormData>(`/admin/categories/${id}/icon`, form, {
+      headers: { 'Content-Type': undefined },
+    });
+  },
+
+  removeIcon: (id: string): Promise<void> => apiDelete<void>(`/admin/categories/${id}/icon`),
 };
 
 /** Ayarlar: kendine özgü uçlar. */

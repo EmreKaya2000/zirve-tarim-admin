@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   Folder,
+  Image as ImageIcon,
   FolderOpen,
   FolderTree,
   Pencil,
@@ -16,6 +17,7 @@ import {
   Search,
   Tag,
   Trash2,
+  Upload,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -43,7 +45,6 @@ const schema = z.object({
   name: z.string().min(2, 'Ad en az 2 karakter olmalıdır.').max(150),
   parentId: z.string().optional(),
   description: z.string().max(2000).optional().or(z.literal('')),
-  icon: z.string().max(60).optional().or(z.literal('')),
   sortOrder: z.number().int().min(0).optional(),
 });
 
@@ -51,6 +52,21 @@ type FormValues = z.infer<typeof schema>;
 
 /** Formda "üst kategori yok" seçeneğinin değeri. */
 const ROOT_VALUE = '__root__';
+
+/*
+ * İKON KISITLARI — backend'in uyguladığı sınırların ARAYÜZ KOPYASI.
+ *
+ * Bunlar yalnız kullanıcıyı erken uyarmak içindir; GERÇEK doğrulama
+ * backend'dedir (apps/api/src/modules/uploads/category-icon.service.ts).
+ * Arayüzde kontrol etmenin tek amacı 1 MB'ı aşan bir dosyayı boşuna
+ * yüklememek; aşağıdaki değerler backend'le birlikte güncellenmelidir.
+ */
+const ICON_ACCEPT = 'image/png,image/jpeg,image/webp';
+const ICON_MAX_MB = 1;
+const ICON_MAX_BYTES = ICON_MAX_MB * 1024 * 1024;
+const ICON_MIN_PX = 64;
+const ICON_MAX_PX = 2048;
+const ICON_OUTPUT_PX = 128;
 
 /**
  * Kategori yönetimi — ağaç görünümü.
@@ -65,12 +81,51 @@ export function CategoriesPage() {
   const [editing, setEditing] = useState<CategoryTreeNode | null>(null);
   const [deleting, setDeleting] = useState<CategoryTreeNode | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  /*
+   * YENİ KATEGORİDE İKON BEKLETİLİR.
+   *
+   * Yükleme ucu `POST /admin/categories/:id/icon` — kategori var olmadan
+   * çağrılamaz. Bu yüzden yeni kayıtta seçilen dosya burada tutulur ve
+   * kategori OLUŞTUKTAN SONRA yüklenir. Alternatif "önce kaydet, sonra
+   * düzenleyip ikon ekle" akışı kullanıcıyı iki tura sokardı.
+   */
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconError, setIconError] = useState<string | null>(null);
+  const iconInputRef = useRef<HTMLInputElement>(null);
+
+  /*
+   * Seçilen dosyanın önizlemesi için object URL.
+   *
+   * `URL.createObjectURL` bellekte bir referans tutar ve GC'ye
+   * BIRAKILMAZ; revoke edilmezse her dosya seçimi sızıntı bırakır.
+   * Bu yüzden effect içinde üretilip cleanup'ta serbest bırakılır.
+   */
+  const [iconObjectUrl, setIconObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (iconFile === null) {
+      setIconObjectUrl(null);
+
+      return;
+    }
+
+    const url = URL.createObjectURL(iconFile);
+
+    setIconObjectUrl(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [iconFile]);
+
+  /** Önizleme: yeni seçim varsa o, yoksa kaydedilmiş ikon. */
+  const iconPreview = iconObjectUrl ?? editing?.iconUrl ?? null;
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', parentId: ROOT_VALUE, description: '', icon: '', sortOrder: 0 },
+    defaultValues: { name: '', parentId: ROOT_VALUE, description: '', sortOrder: 0 },
   });
 
   const treeQuery = useQuery({
@@ -87,7 +142,6 @@ export function CategoriesPage() {
       const payload = {
         name: values.name,
         description: values.description === '' ? undefined : values.description,
-        icon: values.icon === '' ? undefined : values.icon,
         sortOrder: values.sortOrder,
         // ROOT_VALUE seçiliyse köke taşı. Düzenlemede `null` göndermek
         // gerekir; oluşturmada alanın hiç gönderilmemesi yeterlidir.
@@ -95,9 +149,17 @@ export function CategoriesPage() {
           values.parentId === ROOT_VALUE ? (editing === null ? undefined : null) : values.parentId,
       };
 
-      return editing === null
-        ? categoriesApi.create(payload)
-        : categoriesApi.update(editing.id, payload);
+      const saved =
+        editing === null
+          ? await categoriesApi.create(payload)
+          : await categoriesApi.update(editing.id, payload);
+
+      // Bekletilen ikon, kategori kesinleştikten sonra yüklenir.
+      if (iconFile !== null) {
+        await categoriesApi.uploadIcon(saved.id, iconFile);
+      }
+
+      return saved;
     },
     onSuccess: async () => {
       await invalidate();
@@ -107,6 +169,17 @@ export function CategoriesPage() {
       setFormError(
         error instanceof ApiError ? error.message : 'İşlem tamamlanamadı. Lütfen tekrar deneyin.',
       );
+    },
+  });
+
+  const removeIconMutation = useMutation({
+    mutationFn: (id: string) => categoriesApi.removeIcon(id),
+    onSuccess: async () => {
+      setIconError(null);
+      await invalidate();
+    },
+    onError: (error: unknown) => {
+      setIconError(error instanceof ApiError ? error.message : 'İkon kaldırılamadı.');
     },
   });
 
@@ -173,7 +246,6 @@ export function CategoriesPage() {
       name: '',
       parentId: parentId ?? ROOT_VALUE,
       description: '',
-      icon: '',
       sortOrder: 0,
     });
     setFormOpen(true);
@@ -186,13 +258,14 @@ export function CategoriesPage() {
       name: node.name,
       parentId: parentId ?? ROOT_VALUE,
       description: node.description ?? '',
-      icon: node.icon ?? '',
       sortOrder: node.sortOrder,
     });
     setFormOpen(true);
   }
 
   function closeForm(): void {
+    setIconFile(null);
+    setIconError(null);
     setFormOpen(false);
     setEditing(null);
     setFormError(null);
@@ -431,8 +504,96 @@ export function CategoriesPage() {
 
         <FormField>
           <Label htmlFor="icon">İkon</Label>
-          <Input id="icon" placeholder="sprout" {...form.register('icon')} />
-          <FieldHint>Lucide ikon adı. Örn. sprout, shield, droplets</FieldHint>
+
+          <div className="flex items-start gap-4">
+            {/*
+              ÖNİZLEME: yeni seçilen dosya varsa o, yoksa kaydedilmiş ikon.
+              İkisi de yoksa boş çerçeve — "buraya görsel gelecek" sinyali.
+            */}
+            <span className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-outline-variant bg-surface-container-low">
+              {iconPreview === null ? (
+                <ImageIcon className="size-6 text-outline" aria-hidden="true" />
+              ) : (
+                /*
+                  next/image DEĞİL: kaynak ya yerel bir yükleme yolu
+                  (/uploads/...) ya da blob: önizlemesidir; ikisi de
+                  optimizasyondan geçemez. Panelde mevcut desen de bu
+                  (products-list-page, images-tab).
+                */
+                <img src={iconPreview} alt="" className="size-full object-contain" />
+              )}
+            </span>
+
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => iconInputRef.current?.click()}
+                >
+                  <Upload />
+                  Görsel Seç
+                </Button>
+
+                {iconPreview !== null ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (iconFile !== null) {
+                        setIconFile(null);
+
+                        return;
+                      }
+
+                      if (editing !== null) {
+                        removeIconMutation.mutate(editing.id);
+                      }
+                    }}
+                    disabled={removeIconMutation.isPending}
+                  >
+                    <Trash2 />
+                    Kaldır
+                  </Button>
+                ) : null}
+              </div>
+
+              <input
+                ref={iconInputRef}
+                type="file"
+                accept={ICON_ACCEPT}
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+
+                  // Aynı dosyayı ikinci kez seçebilmek için input sıfırlanır.
+                  event.target.value = '';
+                  setIconError(null);
+
+                  if (file !== null && file.size > ICON_MAX_BYTES) {
+                    setIconError(
+                      `Dosya çok büyük (${(file.size / 1024 / 1024).toFixed(1)} MB). En fazla ${ICON_MAX_MB} MB.`,
+                    );
+
+                    return;
+                  }
+
+                  setIconFile(file);
+                }}
+              />
+
+              <FieldError message={iconError ?? undefined} />
+
+              <FieldHint>
+                PNG, JPG veya WebP · en fazla {ICON_MAX_MB} MB · en az {ICON_MIN_PX}×{ICON_MIN_PX},
+                en fazla {ICON_MAX_PX}×{ICON_MAX_PX} piksel · kareye yakın olmalı. Görsel{' '}
+                {ICON_OUTPUT_PX}×{ICON_OUTPUT_PX} WebP&apos;ye dönüştürülür, konum bilgisi silinir.
+                SVG kabul edilmez.
+              </FieldHint>
+            </div>
+          </div>
         </FormField>
 
         <FormField>
