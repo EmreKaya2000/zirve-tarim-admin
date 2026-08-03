@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, EyeOff, Save } from 'lucide-react';
 import {
@@ -68,23 +68,86 @@ export function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [showInternal, setShowInternal] = useState(true);
 
+  /**
+   * Kullanıcının elle değiştirdiği anahtarlar.
+   *
+   * State DEĞİL ref: yalnız aşağıdaki etki okur, değeri değiştiğinde yeniden
+   * render gerekmez.
+   */
+  const touchedKeys = useRef<Set<string>>(new Set());
+
+  /**
+   * Taslağın en güncel hâli.
+   *
+   * `onSuccess` içinde `draft`ı okumak GÜVENİLMEZ: kapanış (closure) mutasyon
+   * başlatıldığı andaki değeri taşır. Karşılaştırma güncel değer üzerinden
+   * yapılmalı, yoksa aşağıdaki kontrol hiçbir şeyi yakalamaz.
+   */
+  const draftRef = useRef<Record<string, string>>({});
+
   const settingsQuery = useQuery({
     queryKey: ['settings'],
     queryFn: () => settingsApi.list(),
   });
 
-  // Sunucudan gelen değerler taslağa yüklenir; kullanıcı düzenlemesi korunur.
+  /*
+   * Sunucudan gelen değerler taslağa yüklenir; KULLANICININ DOKUNDUĞU alanlar
+   * korunur.
+   *
+   * NEDEN DOKUNULANLAR AYRILIYOR: bu etki eskiden taslağın TAMAMINI sunucu
+   * verisiyle değiştiriyordu. Sorgu her yeniden çalıştığında (kaydetme
+   * sonrasındaki invalidate ya da sayfaya geri dönüş) o an düzenlenmekte olan
+   * alan sessizce eski değerine dönüyor, "Kaydet" pasife düşüyor ve yazılan
+   * değer hiç gönderilmiyordu — hata mesajı da olmadığı için panel çalışıyor
+   * görünüyordu.
+   */
   useEffect(() => {
-    if (settingsQuery.data !== undefined) {
-      setDraft(Object.fromEntries(settingsQuery.data.map((item) => [item.key, item.value])));
+    const data = settingsQuery.data;
+
+    if (data === undefined) {
+      return;
     }
+
+    setDraft((current) =>
+      Object.fromEntries(
+        data.map((item) => [
+          item.key,
+          touchedKeys.current.has(item.key) ? (current[item.key] ?? item.value) : item.value,
+        ]),
+      ),
+    );
   }, [settingsQuery.data]);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   const saveMutation = useMutation({
     mutationFn: (items: { key: string; value: string }[]) => settingsApi.updateMany(items),
-    onSuccess: async () => {
+    onSuccess: async (_data, savedItems) => {
       setSaveError(null);
       setSaved(true);
+
+      /*
+       * Bir alan "dokunulmadı" sayılmak için İKİ koşulu birlikte karşılamalı:
+       * gönderilmiş olmalı VE formdaki değeri hâlâ gönderilen değere eşit
+       * olmalı.
+       *
+       * Gönderilenler dışındakiler zaten dışarıda: istek uçarken kullanıcı
+       * BAŞKA bir alanı düzenlemiş olabilir ve aşağıdaki invalidate onu
+       * sunucu değerine döndürürdü.
+       *
+       * Eşitlik kontrolü ise AYNI alanın yeniden düzenlenmesini kapsıyor:
+       * kullanıcı kaydete bastıktan sonra yanıt gelmeden aynı alana yazmışsa
+       * işaret KALMALI, yoksa tazeleme o yeni değeri de sessizce silerdi —
+       * düzeltilmek istenen hatanın aynısı.
+       */
+      for (const item of savedItems) {
+        if (draftRef.current[item.key] === item.value) {
+          touchedKeys.current.delete(item.key);
+        }
+      }
+
       await queryClient.invalidateQueries({ queryKey: ['settings'] });
       // Public ayarlar da değişmiş olabilir.
       await queryClient.invalidateQueries({ queryKey: ['public-settings'] });
@@ -105,6 +168,18 @@ export function SettingsPage() {
       .filter((setting) => draft[setting.key] !== undefined && draft[setting.key] !== setting.value)
       .map((setting) => ({ key: setting.key, value: draft[setting.key] as string }));
   }, [settingsQuery.data, draft]);
+
+  const handleSave = useCallback(() => {
+    setSaved(false);
+    saveMutation.mutate(changed);
+  }, [changed, saveMutation]);
+
+  /** Kaydedilmemiş değişiklikleri atar; alanlar sunucudaki değere döner. */
+  const handleDiscard = useCallback(() => {
+    touchedKeys.current.clear();
+    setSaveError(null);
+    setDraft(Object.fromEntries((settingsQuery.data ?? []).map((item) => [item.key, item.value])));
+  }, [settingsQuery.data]);
 
   /** Ayarları gruba göre öbekler. */
   const grouped = useMemo(() => {
@@ -140,40 +215,24 @@ export function SettingsPage() {
       <PageHeader
         title="Ayarlar"
         description="Mağaza bilgileri, vergi varsayılanları ve yasal metinler."
+        /*
+         * KAYDET DÜĞMESİ BURADA DEĞİL, ALTTAKİ YAPIŞIK ÇUBUKTA.
+         *
+         * Sayfa başlığı uzun formun tepesinde kalır; aşağıdaki bir alanı
+         * düzenleyen kullanıcı onu görmez. Tek kaydetme yeri olması, "hangi
+         * düğme aktif?" ikiliğini de ortadan kaldırır.
+         */
         actions={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => setShowInternal((current) => !current)}
-              title={showInternal ? 'Yalnız public ayarları göster' : 'Tüm ayarları göster'}
-            >
-              {showInternal ? <EyeOff /> : <Eye />}
-              {showInternal ? 'Yalnız Public' : 'Tümü'}
-            </Button>
-            <Button
-              onClick={() => {
-                setSaved(false);
-                saveMutation.mutate(changed);
-              }}
-              disabled={changed.length === 0}
-              loading={saveMutation.isPending}
-            >
-              <Save />
-              Kaydet{changed.length > 0 ? ` (${changed.length})` : ''}
-            </Button>
-          </>
+          <Button
+            variant="outline"
+            onClick={() => setShowInternal((current) => !current)}
+            title={showInternal ? 'Yalnız public ayarları göster' : 'Tüm ayarları göster'}
+          >
+            {showInternal ? <EyeOff /> : <Eye />}
+            {showInternal ? 'Yalnız Public' : 'Tümü'}
+          </Button>
         }
       />
-
-      {saveError !== null ? <Alert variant="error">{saveError}</Alert> : null}
-
-      {saved && changed.length === 0 ? <Alert variant="success">Ayarlar kaydedildi.</Alert> : null}
-
-      {changed.length > 0 ? (
-        <Alert variant="info">
-          {changed.length} ayarda kaydedilmemiş değişiklik var. Tümü tek işlemde kaydedilir.
-        </Alert>
-      ) : null}
 
       {settingsQuery.isPending ? (
         <div className="flex flex-col gap-4">
@@ -205,6 +264,7 @@ export function SettingsPage() {
                   value={draft[setting.key] ?? setting.value}
                   onChange={(value) => {
                     setSaved(false);
+                    touchedKeys.current.add(setting.key);
                     setDraft((current) => ({ ...current, [setting.key]: value }));
                   }}
                 />
@@ -213,6 +273,74 @@ export function SettingsPage() {
           </Card>
         ))
       )}
+
+      <SaveBar
+        changedCount={changed.length}
+        saveError={saveError}
+        saved={saved}
+        isPending={saveMutation.isPending}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+      />
+    </div>
+  );
+}
+
+/**
+ * Kaydetme çubuğu — ekranın altına yapışık durur.
+ *
+ * NEDEN AYRICA BURADA: sayfadaki tek kaydetme düğmesi sayfa başlığının
+ * sağındaydı. Ayarlar listesi ekrandan uzundur; mağaza telefonunu düzenleyen
+ * kullanıcı çok aşağıda olur ve ne düğmeyi ne de "kaydedilmemiş değişiklik
+ * var" uyarısını görür. Kaydetmeden ayrılınca hiçbir hata çıkmaz — panel
+ * çalışıyor görünür, değer sunucuya hiç gitmez. Hata mesajı da bu çubukta
+ * gösterilir: başarısız kaydın uyarısı da düzenlenen yerde görünmelidir.
+ */
+function SaveBar({
+  changedCount,
+  saveError,
+  saved,
+  isPending,
+  onSave,
+  onDiscard,
+}: {
+  changedCount: number;
+  saveError: string | null;
+  saved: boolean;
+  isPending: boolean;
+  onSave: () => void;
+  onDiscard: () => void;
+}) {
+  const hasChanges = changedCount > 0;
+
+  if (!hasChanges && saveError === null && !saved) {
+    return null;
+  }
+
+  return (
+    <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-outline-variant bg-surface-container-lowest px-4 py-3 shadow-elevated">
+      {saveError !== null ? (
+        <p className="min-w-0 text-sm text-error">{saveError}</p>
+      ) : hasChanges ? (
+        <p className="min-w-0 text-sm text-on-surface-variant">
+          <strong className="text-on-surface">{changedCount} ayarda</strong> kaydedilmemiş
+          değişiklik var. Tümü tek işlemde kaydedilir.
+        </p>
+      ) : (
+        <p className="min-w-0 text-sm text-primary">Ayarlar kaydedildi.</p>
+      )}
+
+      {hasChanges ? (
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={onDiscard} disabled={isPending}>
+            Geri Al
+          </Button>
+          <Button onClick={onSave} loading={isPending}>
+            <Save />
+            Kaydet ({changedCount})
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
