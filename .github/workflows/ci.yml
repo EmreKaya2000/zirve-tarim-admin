@@ -190,6 +190,17 @@ jobs:
         env:
           SEED_DEMO_DATA: 'true'
         run: |
+          # `@zirve/types` SEED'DEN ÖNCE DERLENMELİ.
+          #
+          # Seed betiği o paketten sabit okuyor (perakende müşteri kodu) ve
+          # `@zirve/types` bir workspace paketi: derlenmiş `dist/` yoksa
+          # `Cannot find module '@zirve/types/dist/index.js'` ile düşer.
+          # Api deposunun kendi CI'ı bu adımı zaten yapıyor; burada eksikti ve
+          # seed'e ilk `@zirve/types` importu eklendiğinde CI kırıldı.
+          #
+          # `pnpm build` yeterli olmazdı: aşağıdaki adım API'yi derlerken
+          # zaten çağrılıyor ama seed ONDAN ÖNCE koşuyor.
+          pnpm --filter @zirve/types build
           pnpm prisma:migrate:deploy
           pnpm prisma:seed
 
